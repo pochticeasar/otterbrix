@@ -10,6 +10,9 @@ benchmark/1.6.1
 zlib/1.2.12
 bzip2/1.0.8
 magic_enum/0.8.1
+opencl-headers/2023.12.14
+opencl-clhpp-headers/2023.12.14
+opencl-icd-loader/2023.12.14
 
 actor-zeta/1.0.0a11@duckstax/stable
 
