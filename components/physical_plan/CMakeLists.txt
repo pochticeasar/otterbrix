@@ -41,8 +41,6 @@ set(${PROJECT_NAME}_SOURCES
         collection/operators/operator_sort.cpp
         collection/operators/operator_join.cpp
         collection/operators/aggregation.cpp
-
-        context.cpp
 )
 
 add_library(otterbrix_${PROJECT_NAME}
@@ -63,12 +61,14 @@ target_link_libraries(
         otterbrix::types
         otterbrix::cursor
         otterbrix::session
+        otterbrix::context
         otterbrix::index
         otterbrix::logical_plan
-        CONAN_PKG::spdlog
-        CONAN_PKG::abseil
-        CONAN_PKG::boost
+
         OpenCL::OpenCL
+        spdlog::spdlog
+        abseil::abseil
+        Boost::boost
 )
 
 target_include_directories(otterbrix_${PROJECT_NAME} PUBLIC
