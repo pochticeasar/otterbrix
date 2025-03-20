@@ -1,17 +1,15 @@
 #include "test_config.hpp"
 #include <catch2/catch.hpp>
-#include <components/ql/statements.hpp>
 #include <variant>
 
 using namespace components;
 using expressions::compare_type;
-using ql::aggregate::operator_type;
 using key = components::expressions::key_t;
 using id_par = core::parameter_id_t;
 
-static const std::string database_name = "TestDatabase";
-static const std::string collection_name_1 = "TestCollection_1";
-static const std::string collection_name_2 = "TestCollection_2";
+static const std::string database_name = "testdatabase";
+static const std::string collection_name_1 = "testcollection_1";
+static const std::string collection_name_2 = "testcollection_2";
 
 TEST_CASE("integration::cpp::test_join") {
     auto config = test_create_config("/tmp/test_join/base");
@@ -25,8 +23,8 @@ TEST_CASE("integration::cpp::test_join") {
         auto session = otterbrix::session_id_t();
         {
             dispatcher->execute_sql(session, "CREATE DATABASE " + database_name + ";");
-            dispatcher->execute_sql(session, "CREATE TABLE " + database_name + "." + collection_name_1 + ";");
-            dispatcher->execute_sql(session, "CREATE TABLE " + database_name + "." + collection_name_2 + ";");
+            dispatcher->execute_sql(session, "CREATE TABLE " + database_name + "." + collection_name_1 + "();");
+            dispatcher->execute_sql(session, "CREATE TABLE " + database_name + "." + collection_name_2 + "();");
         }
         {
             std::stringstream query;
@@ -128,7 +126,7 @@ TEST_CASE("integration::cpp::test_join") {
                   << database_name << "." << collection_name_2 << " ON " << database_name << "." << collection_name_1
                   << ".key_1"
                   << " = " << database_name << "." << collection_name_2 + ".key"
-                  << " ORDER BY key_1 ASC;";
+                  << " ORDER BY key_1 ASC, key ASC;";
             auto cur = dispatcher->execute_sql(session, query.str());
             REQUIRE(cur->is_success());
             REQUIRE(cur->size() == 100);
@@ -160,7 +158,7 @@ TEST_CASE("integration::cpp::test_join") {
                   << database_name << "." << collection_name_2 << " ON " << database_name << "." << collection_name_1
                   << ".key_1"
                   << " = " << database_name << "." << collection_name_2 + ".key"
-                  << " ORDER BY key_1 ASC;";
+                  << " ORDER BY key_1 ASC, key ASC;";
             auto cur = dispatcher->execute_sql(session, query.str());
             REQUIRE(cur->is_success());
             REQUIRE(cur->size() == 175);
@@ -209,8 +207,7 @@ TEST_CASE("integration::cpp::test_join") {
         {
             std::stringstream query;
             query << "SELECT * FROM " << database_name + "." << collection_name_1 << " CROSS JOIN " << database_name
-                  << "." << collection_name_2 << " ON " << database_name << "." << collection_name_1 << ".key_1"
-                  << " = " << database_name << "." << collection_name_2 + ".key;";
+                  << "." << collection_name_2 << ";";
             auto cur = dispatcher->execute_sql(session, query.str());
             REQUIRE(cur->is_success());
             REQUIRE(cur->size() == 10100);
