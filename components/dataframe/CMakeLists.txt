@@ -22,8 +22,10 @@ set(${PROJECT_NAME}_SOURCES
         bitmask.cpp
         traits.cpp
         types.cpp
+        operator/sum.cpp
 )
 
+find_package(OpenCL REQUIRED)
 
 add_library(otterbrix_${PROJECT_NAME}
         ${${PROJECT_NAME}_SOURCES}
@@ -40,6 +42,8 @@ target_link_libraries(
         otterbrix::assert
         dl
         absl::int128
+        OpenCL::OpenCL
+        
 )
 
 target_include_directories(
@@ -50,3 +54,6 @@ target_include_directories(
 if (DEV_MODE)
     add_subdirectory(tests)
 endif ()
+
+
+add_definitions(-DCL_TARGET_OPENCL_VERSION=200 -DCL_HPP_TARGET_OPENCL_VERSION=200 -DCL_HPP_ENABLE_EXCEPTIONS)
