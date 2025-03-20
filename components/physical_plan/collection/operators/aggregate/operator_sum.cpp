@@ -1,5 +1,7 @@
 #include "operator_sum.hpp"
+#include <components/dataframe/column/column.hpp>
 #include <services/collection/collection.hpp>
+// #include <components/physical_plan/collection/operators/aggregate_cl_version/gpu_realization.cpp>
 
 namespace services::collection::operators::aggregate {
 
