@@ -2,6 +2,9 @@
 
 #include <services/collection/collection.hpp>
 #include <services/memory_storage/context_storage.hpp>
+#include <unordered_map>
+#include <string>
+#include <core/uvector.hpp>
 
 namespace services::collection::executor {
 
@@ -79,13 +82,20 @@ namespace services::collection::executor {
         plan_storage_t plans_;
         log_t log_;
 
-        // Behaviors
+
         actor_zeta::behavior_t execute_plan_;
         actor_zeta::behavior_t create_documents_;
         actor_zeta::behavior_t create_index_finish_;
         actor_zeta::behavior_t create_index_finish_index_exist_;
         actor_zeta::behavior_t index_modify_finish_;
         actor_zeta::behavior_t index_find_finish_;
+
+        std::unordered_map<std::string, core::uvector<float>> float_cache_;
+        std::unordered_map<std::string, core::uvector<double>> double_cache_;
+        std::unordered_map<std::string, core::uvector<int>> int_cache_;
+        std::unordered_map<std::string, core::uvector<long long>> long_cache_;
+        std::unordered_map<std::string, core::uvector<int>> in_cache_;
+        std::unordered_map<std::string, core::uvector<long long>> long_cache_;
     };
 
     using executor_ptr = std::unique_ptr<executor_t, actor_zeta::pmr::deleter_t>;

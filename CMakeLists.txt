@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16.3 FATAL_ERROR)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_PROJECT_VERSION_MAJOR 1)
 set(CMAKE_PROJECT_VERSION_MINOR 0)
 set(CMAKE_PROJECT_VERSION_PATCH 0)
@@ -15,7 +17,7 @@ message(STATUS "ARCH : ${CMAKE_SYSTEM_NAME}")
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_ASIO_HAS_MOVE -DEXCEPTIONS_DISABLE=OFF " CACHE STRING "compile flags" FORCE)
 
-option(DEV_MODE "developer mode" OFF)
+option(DEV_MODE "developer mode" ON)
 option(EXAMPLE "Example" OFF)
 option(ALLOW_BENCHMARK "Allow benchmark" OFF)
 option(CONAN_EXPERIMENTAL_INCLUDE "CONAN EXPERIMENT INCLUDE" ON)
@@ -90,7 +92,7 @@ message(STATUS "DCMAKE_TOOLCHAIN_FILE = ${CMAKE_TOOLCHAIN_FILE}")
 if(POLICY CMP0167)
     cmake_policy(SET CMP0167 OLD)
 endif()
-find_package(Boost 1.86.0 REQUIRED)
+find_package(Boost 1.85.0 REQUIRED)
 find_package(fmt 10.2.1 REQUIRED)
 find_package(spdlog 1.12.0 REQUIRED)
 find_package(pybind11 2.10.0 REQUIRED)

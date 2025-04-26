@@ -9,6 +9,8 @@
 #include <core/system_command.hpp>
 #include <services/disk/route.hpp>
 #include <services/memory_storage/memory_storage.hpp>
+#include <algorithm>
+#include <numeric>
 
 using namespace components::cursor;
 
@@ -258,6 +260,38 @@ namespace services::collection::executor {
             }
         } else {
             execute_sub_plan_finish_(session, make_cursor(resource(), operation_status_t::success));
+        }
+
+        std::string cache_key = collection->name().collection + "_target_column";
+        core::uvector<float>* data_vec = nullptr;
+
+
+        auto it = float_cache_.find(cache_key);
+        if (it != float_cache_.end()) {
+            data_vec = &it->second;
+        } else {
+
+            core::uvector<float> loaded_vec = load_column_as_uvector(collection, "target_column");
+            float_cache_[cache_key] = std::move(loaded_vec);
+            data_vec = &float_cache_[cache_key];
+        }
+
+        float result = 0;
+        switch (plan->type()) {
+            case operators::operator_type::sum:
+                result = std::accumulate(data_vec->begin(), data_vec->end(), 0.0f);
+                break;
+            case operators::operator_type::max:
+                result = *std::max_element(data_vec->begin(), data_vec->end());
+                break;
+            case operators::operator_type::min:
+                result = *std::min_element(data_vec->begin(), data_vec->end());
+                break;
+            case operators::operator_type::avg:
+                result = std::accumulate(data_vec->begin(), data_vec->end(), 0.0f) / data_vec->size();
+                break;
+            default:
+                break;
         }
     }
 

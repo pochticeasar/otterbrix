@@ -8,7 +8,8 @@ set(${PROJECT_NAME}_SOURCES
         collection/operators/aggregate/operator_max.cpp
         collection/operators/aggregate/operator_sum.cpp
         collection/operators/aggregate/operator_avg.cpp
-
+        collection/operators/aggregate_cl_version/gpu_realization.cpp 
+            
         collection/operators/get/operator_get.cpp
         collection/operators/get/simple_value.cpp
 
@@ -54,6 +55,8 @@ add_library(otterbrix::${PROJECT_NAME} ALIAS otterbrix_${PROJECT_NAME})
 
 set_property(TARGET otterbrix_${PROJECT_NAME} PROPERTY EXPORT_NAME ${PROJECT_NAME})
 
+find_package(OpenCL REQUIRED)
+
 target_link_libraries(
         otterbrix_${PROJECT_NAME} PUBLIC
         otterbrix::document
@@ -63,6 +66,8 @@ target_link_libraries(
         otterbrix::context
         otterbrix::index
         otterbrix::logical_plan
+
+        OpenCL::OpenCL
         spdlog::spdlog
         abseil::abseil
         Boost::boost
@@ -75,3 +80,6 @@ if (DEV_MODE)
     add_definitions(-DDEV_MODE)
     add_subdirectory(tests)
 endif ()
+
+
+add_definitions(-DCL_TARGET_OPENCL_VERSION=200 -DCL_HPP_TARGET_OPENCL_VERSION=200 -DCL_HPP_ENABLE_EXCEPTIONS)
