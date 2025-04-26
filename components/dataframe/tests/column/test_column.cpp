@@ -1,3 +1,5 @@
+#define CATCH_CONFIG_ENABLE_BENCHMARKING
+
 #include <catch2/catch.hpp>
 
 #include <algorithm>
@@ -14,7 +16,22 @@
 #include "dataframe/type_dispatcher.hpp"
 #include "dataframe/types.hpp"
 
+#include "dataframe/operator/sum.hpp"
 #include "dataframe/tests/tools.hpp"
+#include <boost/compute.hpp>
+#include <boost/compute/algorithm/reduce.hpp>
+#include <boost/compute/core.hpp>
+#include <boost/compute/algorithm/accumulate.hpp>
+#include <boost/compute/system.hpp>
+#include <boost/compute/container/vector.hpp>
+#include <boost/compute/command_queue.hpp>
+#include <cstdint>
+#include <memory_resource>
+#include "core/uvector.hpp"
+#include "core/buffer.hpp"
+#include <half/half.hpp>
+
+namespace compute = boost::compute;
 
 using namespace components::dataframe;
 using namespace components::dataframe::column;
@@ -42,6 +59,19 @@ namespace {
     bool equal(const column_t& c1, const column_t& c2) { return equal(c1.view(), c2.view()); }
 
 } // namespace
+
+
+using float16 = half_float::half;
+
+using TestTypes = std::tuple<
+    float16,
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    float,
+    double
+>;
 
 template<typename T>
 struct gen_column {
@@ -363,7 +393,7 @@ TEMPLATE_TEST_CASE("device uvector constructor with mask", "[column][template]",
     REQUIRE(original_mask == moved_to_view.null_mask());
 }
 
-TEMPLATE_TEST_CASE("construct with children", "[column][template]", std::int32_t) {
+TEMPLATE_TEST_CASE("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "[column][template][benchmark]", std::int32_t) {
     auto resource = std::pmr::synchronized_pool_resource();
     gen_column<TestType> gen(&resource);
     std::vector<std::unique_ptr<column_t>> children;
@@ -384,6 +414,17 @@ TEMPLATE_TEST_CASE("construct with children", "[column][template]", std::int32_t
                  core::buffer{&resource, gen.all_valid_mask},
                  unknown_null_count,
                  std::move(children)};
+    BENCHMARK("column benchmark") {
+        column_t col{&resource,
+                 gen.type(),
+                 gen.num_elements(),
+                 core::buffer(&resource, gen.data),
+                 core::buffer{&resource, gen.all_valid_mask},
+                 unknown_null_count,
+                 std::move(children)};
+
+        return col;
+    };
     verify_column_views(col, &resource);
     REQUIRE(2 == col.num_children());
     REQUIRE(data_type{type_id::int8} == col.child(0).type());
@@ -456,4 +497,299 @@ TEMPLATE_TEST_CASE("column view constructor with mask", "[column][template]", st
     column_view copy_view = copy;
     REQUIRE(original_view.head() != copy_view.head());
     REQUIRE(original_view.null_mask() != copy_view.null_mask());
+}
+
+
+// TEMPLATE_TEST_CASE("realization gpu", "[column][template][benchmark][sum]", std::int32_t) {
+//     compute::device device = compute::system::default_device();
+//     compute::context context(device);
+//     compute::command_queue queue(context, device);
+    
+//     size_t ize = 100000000;
+//     compute::vector<float> values(context);
+//     values.resize(ize);
+
+//     core::uvector<float> uvec2(std::pmr::get_default_resource(), ize);
+//     std::iota(uvec2.begin(), uvec2.end(), 1);
+//     components::dataframe::column::column_t col2(std::pmr::get_default_resource(), std::move(uvec2), core::buffer(std::pmr::get_default_resource(), ize), 0);
+//     auto view2 = col2.view();
+//     auto* data2 = view2.data<float>();
+//     // Copy data from CPU to GPU
+//     compute::copy(data2, data2 + ize, values.begin(), queue);
+
+//     float sum = 0;
+//     compute::reduce(
+//         values.begin(), values.end(), &sum, compute::plus<float>(), queue
+//     );
+//     BENCHMARK("cpu benchmark sum") {
+//         return std::accumulate(data2, data2 + ize, 0.0f);
+//     };
+//     BENCHMARK("gpu benchmark sum") {
+//         compute::vector<float> values(context);
+//         values.resize(ize);
+
+//         // Copy data from CPU to GPU
+//         compute::copy(data2, data2 + ize, values.begin(), queue);
+
+//         float sum = 0;
+//         compute::reduce(
+//             values.begin(), values.end(), &sum, compute::plus<float>(), queue
+//         );
+//         return sum;
+//     };
+//     BENCHMARK("gpu benchmark no cp sum") {
+//         float sum = 0;
+//         compute::reduce(
+//             values.begin(), values.end(), &sum, compute::plus<float>(), queue
+//         );
+//         return sum;
+//     };
+//     REQUIRE(sum != 0);
+// }
+
+
+// TEMPLATE_TEST_CASE("realization gpu max", "[column][template][benchmark][max]", std::int32_t) {
+//     compute::device device = compute::system::default_device();
+//     compute::context context(device);
+//     compute::command_queue queue(context, device);
+    
+//     size_t ize = 100000000;
+//     compute::vector<float> values(context);
+//     values.resize(ize);
+
+//     core::uvector<float> uvec2(std::pmr::get_default_resource(), ize);
+//     std::iota(uvec2.begin(), uvec2.end(), 1);
+//     components::dataframe::column::column_t col2(std::pmr::get_default_resource(), std::move(uvec2), core::buffer(std::pmr::get_default_resource(), ize), 0);
+//     auto view2 = col2.view();
+//     auto* data2 = view2.data<float>();
+//     // Copy data from CPU to GPU
+//     compute::copy(data2, data2 + ize, values.begin(), queue);
+
+//     float sum = INT_MIN;
+//     compute::reduce(
+//         values.begin(), values.end(), &sum, compute::max<float>(), queue
+//     );
+//     BENCHMARK("cpu benchmark max") {
+//         return std::max_element(data2, data2 + ize);
+//     };
+//     BENCHMARK("gpu benchmark max") {
+//         compute::vector<float> values(context);
+//         values.resize(ize);
+
+//         // Copy data from CPU to GPU
+//         compute::copy(data2, data2 + ize, values.begin(), queue);
+
+//         float sum = 0;
+//         compute::reduce(
+//             values.begin(), values.end(), &sum, compute::max<float>(), queue
+//         );
+//         return sum;
+//     };
+//     BENCHMARK("gpu benchmark no cp max") {
+//         float sum = INT_MIN;
+//         compute::reduce(
+//             values.begin(), values.end(), &sum, compute::max<float>(), queue
+//         );
+//         return sum;
+//     };
+// }
+
+TEMPLATE_TEST_CASE("realization gpu mix", "[column][template][benchmark][max]", std::int32_t) {
+    compute::device device = compute::system::default_device();
+    compute::context context(device);
+    compute::command_queue queue(context, device);
+    
+    size_t ize = 10000000;
+    compute::vector<float> values(context);
+    values.resize(ize);
+
+    core::uvector<float> uvec2(std::pmr::get_default_resource(), ize);
+    std::iota(uvec2.begin(), uvec2.end(), 1);
+    components::dataframe::column::column_t col2(std::pmr::get_default_resource(), std::move(uvec2), core::buffer(std::pmr::get_default_resource(), ize), 0);
+    auto view2 = col2.view();
+    auto* data2 = view2.data<float>();
+    compute::copy(data2, data2 + ize, values.begin(), queue);
+
+    float sum = INT_MIN;
+    compute::reduce(
+        values.begin(), values.end(), &sum, compute::max<float>(), queue
+    );
+    BENCHMARK("cpu benchmark mix") {
+        float sum = std::accumulate(data2, data2 + ize, 0.0f);
+        float in = *std::min_element(data2, data2 + ize);
+        return *std::max_element(data2, data2 + ize) + sum + in;
+    };
+    BENCHMARK("gpu benchmark mix") {
+        compute::vector<float> values(context);
+        values.resize(ize);
+
+        compute::copy(data2, data2 + ize, values.begin(), queue);
+
+        float in = INT_MIN;
+        compute::reduce(
+            values.begin(), values.end(), &in, compute::max<float>(), queue
+        );
+        float ax = INT_MAX;
+        compute::reduce(
+            values.begin(), values.end(), &ax, compute::min<float>(), queue
+        );
+        float sum = 0;
+        compute::reduce(
+            values.begin(), values.end(), &sum, compute::plus<float>(), queue
+        );
+        return sum + in + ax;
+    };
+    BENCHMARK("gpu benchmark no cp mix") {
+        float in = INT_MIN;
+        compute::reduce(
+            values.begin(), values.end(), &in, compute::max<float>(), queue
+        );
+        float sum = 0;
+        compute::reduce(
+            values.begin(), values.end(), &sum, compute::plus<float>(), queue
+        );
+        float ax = INT_MAX;
+        compute::reduce(
+            values.begin(), values.end(), &ax, compute::min<float>(), queue
+        );
+        return sum + in + ax;
+    };
+}
+
+TEMPLATE_TEST_CASE("gpu/cpu correctness and benchmark: SUM", "[column][template][benchmark][gpu][cpu][sum]", float, int8_t, int16_t, int32_t, int64_t) {
+    using T = TestType;
+    compute::device device = compute::system::default_device();
+    compute::context context(device);
+    compute::command_queue queue(context, device);
+
+    size_t ize = 10'000'000;
+    core::uvector<T> uvec(std::pmr::get_default_resource(), ize);
+    std::iota(uvec.begin(), uvec.end(), T(1));
+    components::dataframe::column::column_t col(std::pmr::get_default_resource(), std::move(uvec), core::buffer(std::pmr::get_default_resource(), ize * sizeof(T)), 0);
+    auto view = col.view();
+    auto* data = view.data<T>();
+
+    T cpu_sum = std::accumulate(data, data + ize, T(0));
+    compute::vector<T> values(context);
+    values.resize(ize);
+    compute::copy(data, data + ize, values.begin(), queue);
+
+    T gpu_sum = 0;
+    compute::reduce(values.begin(), values.end(), &gpu_sum, compute::plus<T>(), queue);
+
+    REQUIRE(gpu_sum == cpu_sum);
+
+    BENCHMARK("cpu sum") {
+        return std::accumulate(data, data + ize, T(0));
+    };
+    BENCHMARK("gpu sum") {
+        T sum = 0;
+        compute::reduce(values.begin(), values.end(), &sum, compute::plus<T>(), queue);
+        return sum;
+    };
+}
+
+TEMPLATE_TEST_CASE("gpu/cpu correctness and benchmark: MIN", "[column][template][benchmark][gpu][cpu][min]", float, int8_t, int16_t, int32_t, int64_t) {
+    using T = TestType;
+    compute::device device = compute::system::default_device();
+    compute::context context(device);
+    compute::command_queue queue(context, device);
+
+    size_t ize = 10'000'000;
+    core::uvector<T> uvec(std::pmr::get_default_resource(), ize);
+    std::iota(uvec.begin(), uvec.end(), T(1));
+    components::dataframe::column::column_t col(std::pmr::get_default_resource(), std::move(uvec), core::buffer(std::pmr::get_default_resource(), ize * sizeof(T)), 0);
+    auto view = col.view();
+    auto* data = view.data<T>();
+
+    T cpu_min = *std::min_element(data, data + ize);
+
+    compute::vector<T> values(context);
+    values.resize(ize);
+    compute::copy(data, data + ize, values.begin(), queue);
+
+    T gpu_min = std::numeric_limits<T>::max();
+    compute::reduce(values.begin(), values.end(), &gpu_min, compute::min<T>(), queue);
+
+    REQUIRE(gpu_min == cpu_min);
+
+    BENCHMARK("cpu min") {
+        return *std::min_element(data, data + ize);
+    };
+    BENCHMARK("gpu min") {
+        T min = std::numeric_limits<T>::max();
+        compute::reduce(values.begin(), values.end(), &min, compute::min<T>(), queue);
+        return min;
+    };
+}
+
+TEMPLATE_TEST_CASE("gpu/cpu correctness and benchmark: MAX", "[column][template][benchmark][gpu][cpu][max]", float, int8_t, int16_t, int32_t, int64_t) {
+    using T = TestType;
+    compute::device device = compute::system::default_device();
+    compute::context context(device);
+    compute::command_queue queue(context, device);
+
+    size_t ize = 10'000'000;
+    core::uvector<T> uvec(std::pmr::get_default_resource(), ize);
+    std::iota(uvec.begin(), uvec.end(), T(1));
+    components::dataframe::column::column_t col(std::pmr::get_default_resource(), std::move(uvec), core::buffer(std::pmr::get_default_resource(), ize * sizeof(T)), 0);
+    auto view = col.view();
+    auto* data = view.data<T>();
+
+    T cpu_max = *std::max_element(data, data + ize);
+
+    compute::vector<T> values(context);
+    values.resize(ize);
+    compute::copy(data, data + ize, values.begin(), queue);
+
+    T gpu_max = std::numeric_limits<T>::lowest();
+    compute::reduce(values.begin(), values.end(), &gpu_max, compute::max<T>(), queue);
+
+    REQUIRE(gpu_max == cpu_max);
+
+    BENCHMARK("cpu max") {
+        return *std::max_element(data, data + ize);
+    };
+    BENCHMARK("gpu max") {
+        T max = std::numeric_limits<T>::lowest();
+        compute::reduce(values.begin(), values.end(), &max, compute::max<T>(), queue);
+        return max;
+    };
+}
+
+TEMPLATE_TEST_CASE("gpu/cpu correctness and benchmark: AVG", "[column][template][benchmark][gpu][cpu][avg]", float, int8_t, int16_t, int32_t, int64_t) {
+    using T = TestType;
+    compute::device device = compute::system::default_device();
+    compute::context context(device);
+    compute::command_queue queue(context, device);
+
+    size_t ize = 10'000'000;
+    core::uvector<T> uvec(std::pmr::get_default_resource(), ize);
+    std::iota(uvec.begin(), uvec.end(), T(1));
+    components::dataframe::column::column_t col(std::pmr::get_default_resource(), std::move(uvec), core::buffer(std::pmr::get_default_resource(), ize * sizeof(T)), 0);
+    auto view = col.view();
+    auto* data = view.data<T>();
+
+    T cpu_sum = std::accumulate(data, data + ize, T(0));
+    double cpu_avg = static_cast<double>(cpu_sum) / ize;
+
+    compute::vector<T> values(context);
+    values.resize(ize);
+    compute::copy(data, data + ize, values.begin(), queue);
+
+    T gpu_sum = 0;
+    compute::reduce(values.begin(), values.end(), &gpu_sum, compute::plus<T>(), queue);
+    double gpu_avg = static_cast<double>(gpu_sum) / ize;
+
+    REQUIRE(gpu_avg == Approx(cpu_avg).epsilon(1e-6));
+
+    BENCHMARK("cpu avg") {
+        T sum = std::accumulate(data, data + ize, T(0));
+        return static_cast<double>(sum) / ize;
+    };
+    BENCHMARK("gpu avg") {
+        T sum = 0;
+        compute::reduce(values.begin(), values.end(), &sum, compute::plus<T>(), queue);
+        return static_cast<double>(sum) / ize;
+    };
 }

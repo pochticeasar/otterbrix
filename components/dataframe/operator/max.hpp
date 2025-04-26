@@ -7,6 +7,7 @@
 #include <boost/compute/container/vector.hpp>
 #include <boost/compute/command_queue.hpp>
 #include <cstdint>
+#include <limits>
 #include <memory_resource>
 #include "core/uvector.hpp"
 #include "core/buffer.hpp"
@@ -14,7 +15,7 @@
 namespace compute = boost::compute;
 
 template <typename T>
-T sum(const components::dataframe::column::column_t& column, size_t size) {
+T max(const components::dataframe::column::column_t& column, size_t size) {
     compute::device device = compute::system::default_device();
     compute::context context(device);
     compute::command_queue queue(context, device);
@@ -27,9 +28,9 @@ T sum(const components::dataframe::column::column_t& column, size_t size) {
 
     compute::copy(data2, data2 +size, values.begin(), queue);
 
-    T sum = 0;
+    T max = std::numeric_limits<T>::min();
     compute::reduce(
-        values.begin(), values.end(), &sum, compute::plus<T>(), queue
+        values.begin(), values.end(), &max, compute::max<T>(), queue
     );
-    return sum;
+    return max;
 }

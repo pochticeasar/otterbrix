@@ -14,7 +14,7 @@
 namespace compute = boost::compute;
 
 template <typename T>
-T sum(const components::dataframe::column::column_t& column, size_t size) {
+T avg(const components::dataframe::column::column_t& column, size_t size) {
     compute::device device = compute::system::default_device();
     compute::context context(device);
     compute::command_queue queue(context, device);
@@ -31,5 +31,5 @@ T sum(const components::dataframe::column::column_t& column, size_t size) {
     compute::reduce(
         values.begin(), values.end(), &sum, compute::plus<T>(), queue
     );
-    return sum;
+    return sum/size;
 }
